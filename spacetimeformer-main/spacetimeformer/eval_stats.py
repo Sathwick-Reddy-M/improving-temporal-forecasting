@@ -1,3 +1,4 @@
+# Completed
 import numpy as np
 
 EPSILON = 1e-7
