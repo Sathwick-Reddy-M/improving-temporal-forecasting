@@ -250,15 +250,20 @@ class Forecaster(pl.LightningModule, ABC):
         return stats
 
     def training_step(self, batch, batch_idx):
-        return self.step(batch, train=True)
+        stats = self.step(batch, train=True)
+        self._log_stats("train", stats)
+        return stats
 
     def validation_step(self, batch, batch_idx):
         stats = self.step(batch, train=False)
+        self._log_stats("val", stats)
         self.current_val_stats = stats
         return stats
 
     def test_step(self, batch, batch_idx):
-        return self.step(batch, train=False)
+        stats = self.step(batch, train=False)
+        self._log_stats("test", stats)
+        return stats
 
     def _log_stats(self, section, outs):
         for key in outs.keys():
