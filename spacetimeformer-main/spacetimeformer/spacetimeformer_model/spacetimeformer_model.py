@@ -144,6 +144,8 @@ class Spacetimeformer_Forecaster(stf.Forecaster):
         self.pad_value = pad_value
         self.save_hyperparameters()
 
+        self.validation_step_outputs = []
+
         qprint = lambda _msg_: print(_msg_) if verbose else None
         qprint(f" *** Spacetimeformer (v1.5) Summary: *** ")
         qprint(f"\t\tModel Dim: {d_model}")
@@ -212,14 +214,25 @@ class Spacetimeformer_Forecaster(stf.Forecaster):
 
         labels = labels.view(-1).to(logits.device)
         d_y = labels.max() + 1
+        num_classes = int(labels.max().item() + 1)
 
         logits = logits.view(-1, d_y)
 
         class_loss = F.cross_entropy(logits, labels)
-        acc = torchmetrics.functional.accuracy(
-            torch.softmax(logits, dim=1),
-            labels,
-        )
+
+        if num_classes == 2:
+            # For binary classification, use probability from the positive class.
+            preds = torch.softmax(logits, dim=1)[:, 1]
+            acc = torchmetrics.functional.accuracy(
+                preds, labels, task="binary", threshold=0.5
+            )
+        else:
+            # For multiclass classification, use full softmax output.
+            preds = torch.softmax(logits, dim=1)
+            acc = torchmetrics.functional.accuracy(
+                preds, labels, task="multiclass", num_classes=num_classes
+            )
+            
         return class_loss, acc
 
     def compute_loss(self, batch, time_mask=None, forward_kwargs={}):
@@ -294,18 +307,28 @@ class Spacetimeformer_Forecaster(stf.Forecaster):
         if output_attn:
             return forecast_output, recon_output, (logits, labels), attn
         return forecast_output, recon_output, (logits, labels)
+           
 
-    def validation_epoch_end(self, outs):
+    def validation_step(self, batch, batch_idx):
+        outputs = super().validation_step(batch, batch_idx)
+        self.validation_step_outputs.append(outputs)
+        return outputs
+    
+
+    def on_validation_epoch_end(self):
         total = 0
         count = 0
-        for dict_ in outs:
+        for dict_ in self.validation_step_outputs:
             if "forecast_loss" in dict_:
                 total += dict_["forecast_loss"].mean()
                 count += 1
         avg_val_loss = total / count
+
         # manually tell scheduler it's the end of an epoch to activate
         # ReduceOnPlateau functionality from a step-based scheduler
-        self.scheduler.step(avg_val_loss, is_end_epoch=True)
+        self.scheduler.step(avg_val_loss)
+        self.validation_step_outputs.clear()
+
 
     def training_step_end(self, outs):
         self._log_stats("train", outs)
@@ -326,7 +349,12 @@ class Spacetimeformer_Forecaster(stf.Forecaster):
             patience=3,
             factor=self.decay_factor,
         )
-        return [self.optimizer], [self.scheduler]
+        # return [self.optimizer], [self.scheduler]
+        return {
+            "optimizer": self.optimizer,
+            "lr_scheduler": self.scheduler,
+            "monitor": "val/forecast_loss",
+        }
 
     @classmethod
     def add_cli(self, parser):

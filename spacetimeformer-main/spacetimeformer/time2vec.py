@@ -1,5 +1,3 @@
-# Completed
-
 import torch
 from torch import nn
 
@@ -12,8 +10,12 @@ class Time2Vec(nn.Module):
         if self.enabled:
             self.embed_dim = embed_dim // input_dim
             self.input_dim = input_dim
-            self.embed_weight = nn.Parameter(torch.randn(self.input_dim, self.embed_dim))
-            self.embed_bias = nn.Parameter(torch.randn(self.input_dim, self.embed_dim))
+            self.embed_weight = nn.parameter.Parameter(
+                torch.randn(self.input_dim, self.embed_dim)
+            )
+            self.embed_bias = nn.parameter.Parameter(
+                torch.randn(self.input_dim, self.embed_dim)
+            )
             self.act_function = act_function
 
     def forward(self, x):

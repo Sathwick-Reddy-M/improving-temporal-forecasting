@@ -561,6 +561,7 @@ def create_dset(config):
             time_col_name="date",
             time_features=["month", "day", "weekday", "hour"],
         )
+        print(dset.get_slice("train", 0, 10, 1))
         DATA_MODULE = stf.data.DataModule(
             datasetCls=stf.data.CSVTorchDset,
             dataset_kwargs={
@@ -833,8 +834,10 @@ def main(args):
 
     trainer = pl.Trainer(
         # gpus=args.gpus,
-        accelerator = "gpu", # Modified
+        accelerator = "auto", # Modified
         devices = "auto", # Modified
+        strategy="auto", # Modified
+        max_epochs=-1, # Modified
         callbacks=callbacks,
         logger=logger if args.wandb else None,
         # accelerator="dp",
