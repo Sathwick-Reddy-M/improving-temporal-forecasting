@@ -54,7 +54,7 @@ class DataModule(pl.LightningDataModule):
         parser.add_argument(
             "--workers",
             type=int,
-            default=6,
+            default=4,
             help="number of parallel workers for pytorch dataloader",
         )
         parser.add_argument(

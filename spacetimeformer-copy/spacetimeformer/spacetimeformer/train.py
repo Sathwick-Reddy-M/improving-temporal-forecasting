@@ -836,7 +836,7 @@ def main(args):
         accelerator = "auto", # Modified
         devices = "auto", # Modified
         strategy="auto", # Modified
-        max_epochs=2, # Modified
+        max_epochs=-1, # Modified
         callbacks=callbacks,
         logger=logger if args.wandb else None,
         # accelerator="dp",
