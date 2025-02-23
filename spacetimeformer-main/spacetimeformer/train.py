@@ -32,6 +32,9 @@ _DSETS = [
     "monash",
     "hangzhou",
     "traffic",
+    "custom-asos-tx",
+    "custom-asos-ny",
+    "aemo-all",
 ]
 
 
@@ -107,6 +110,14 @@ def create_parser():
     parser.add_argument("--limit_val_batches", type=float, default=1.0)
     parser.add_argument("--no_earlystopping", action="store_true")
     parser.add_argument("--patience", type=int, default=5)
+    parser.add_argument("--epochs", type=int, default=100)
+    parser.add_argument(
+        "--ckpt_path",
+        type=str,
+        default="best",
+        help="Path to the checkpoint to use for testing",
+    )
+    parser.add_argument("--test_only", action="store_true")
     parser.add_argument(
         "--trials", type=int, default=1, help="How many consecutive trials to run"
     )
@@ -136,6 +147,18 @@ def create_model(config):
         x_dim = 6
         yc_dim = 6
         yt_dim = 6
+    elif config.dset == "custom-asos-tx":
+        x_dim = 6
+        yc_dim = 3
+        yt_dim = 3
+    elif config.dset == "custom-asos-ny":
+        x_dim = 6
+        yc_dim = 3
+        yt_dim = 3
+    elif config.dset == "aemo-all":
+        x_dim = 6
+        yc_dim = 10
+        yt_dim = 10
     elif config.dset == "solar_energy":
         x_dim = 6
         yc_dim = 137
@@ -617,6 +640,25 @@ def create_dset(config):
             if data_path == "auto":
                 data_path = "./data/temperature-v1.csv"
             target_cols = ["ABI", "AMA", "ACT", "ALB", "JFK", "LGA"]
+        elif config.dset == "custom-asos-tx":
+            target_cols = ["ABI", "ACT", "AMA"]
+        elif config.dset == "custom-asos-ny":
+            target_cols = ["ALB", "JFK", "LGA"]
+        elif config.dset == "aemo-all":
+            time_col_name = "SETTLEMENTDATE"
+            target_cols = [
+                "TOTALDEMAND_NSW",
+                "RRP_NSW",
+                "TOTALDEMAND_VIC",
+                "RRP_VIC",
+                "TOTALDEMAND_QLD",
+                "RRP_QLD",
+                "TOTALDEMAND_SA",
+                "RRP_SA",
+                "TOTALDEMAND_TAS",
+                "RRP_TAS",
+            ]
+            NULL_VAL = 10**6
         elif config.dset == "solar_energy":
             if data_path == "auto":
                 data_path = "./data/solar_AL_converted.csv"
@@ -672,6 +714,9 @@ def create_dset(config):
         INV_SCALER = dset.reverse_scaling
         SCALER = dset.apply_scaling
         NULL_VAL = None
+
+        if config.dset == "aemo-all":
+            NULL_VAL = 10**6
 
     return (
         DATA_MODULE,
@@ -834,10 +879,10 @@ def main(args):
 
     trainer = pl.Trainer(
         # gpus=args.gpus,
-        accelerator = "auto", # Modified
-        devices = "auto", # Modified
-        strategy="auto", # Modified
-        max_epochs=-1, # Modified
+        accelerator="auto",  # Modified
+        devices="auto",  # Modified
+        strategy="auto",  # Modified
+        max_epochs=args.epochs,  # Modified
         callbacks=callbacks,
         logger=logger if args.wandb else None,
         # accelerator="dp",
@@ -850,11 +895,16 @@ def main(args):
         **val_control,
     )
 
-    # Train
-    trainer.fit(forecaster, datamodule=data_module)
+    if not args.test_only:
+        # Train
+        trainer.fit(forecaster, datamodule=data_module)
 
-    # Test
-    trainer.test(datamodule=data_module, ckpt_path="best")
+    if args.test_only:
+        # Test
+        trainer.test(model=forecaster, datamodule=data_module, ckpt_path=args.ckpt_path)
+    else:
+        # Test
+        trainer.test(datamodule=data_module, ckpt_path=args.ckpt_path)
 
     # Predict (only here as a demo and test)
     # forecaster.to("cuda")
