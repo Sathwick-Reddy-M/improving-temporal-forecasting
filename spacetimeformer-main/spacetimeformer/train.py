@@ -35,6 +35,11 @@ _DSETS = [
     "custom-asos-tx",
     "custom-asos-ny",
     "aemo-all",
+    "ameo-nsw",
+    "aemo-qld",
+    "aemo-sa",
+    "aemo-tas",
+    "aemo-vic",
 ]
 
 
@@ -159,6 +164,10 @@ def create_model(config):
         x_dim = 6
         yc_dim = 10
         yt_dim = 10
+    elif config.dset in ["ameo-nsw", "aemo-qld", "aemo-sa", "aemo-tas", "aemo-vic"]:
+        x_dim = 6
+        yc_dim = 2
+        yt_dim = 2
     elif config.dset == "solar_energy":
         x_dim = 6
         yc_dim = 137
@@ -659,6 +668,26 @@ def create_dset(config):
                 "RRP_TAS",
             ]
             NULL_VAL = 10**6
+        elif config.dset == "ameo-nsw":
+            time_col_name = "SETTLEMENTDATE"
+            target_cols = ["TOTALDEMAND_NSW", "RRP_NSW"]
+            NULL_VAL = 10**6
+        elif config.dset == "aemo-qld":
+            time_col_name = "SETTLEMENTDATE"
+            target_cols = ["TOTALDEMAND_QLD", "RRP_QLD"]
+            NULL_VAL = 10**6
+        elif config.dset == "aemo-sa":
+            time_col_name = "SETTLEMENTDATE"
+            target_cols = ["TOTALDEMAND_SA", "RRP_SA"]
+            NULL_VAL = 10**6
+        elif config.dset == "aemo-tas":
+            time_col_name = "SETTLEMENTDATE"
+            target_cols = ["TOTALDEMAND_TAS", "RRP_TAS"]
+            NULL_VAL = 10**6
+        elif config.dset == "aemo-vic":
+            time_col_name = "SETTLEMENTDATE"
+            target_cols = ["TOTALDEMAND_VIC", "RRP_VIC"]
+            NULL_VAL = 10**6
         elif config.dset == "solar_energy":
             if data_path == "auto":
                 data_path = "./data/solar_AL_converted.csv"
@@ -715,7 +744,14 @@ def create_dset(config):
         SCALER = dset.apply_scaling
         NULL_VAL = None
 
-        if config.dset == "aemo-all":
+        if config.dset in [
+            "aemo-all",
+            "ameo-nsw",
+            "aemo-qld",
+            "aemo-sa",
+            "aemo-tas",
+            "aemo-vic",
+        ]:
             NULL_VAL = 10**6
 
     return (
