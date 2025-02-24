@@ -41,7 +41,7 @@ _DSETS = [
     "aemo-tas",
     "aemo-vic",
     "aemo-nsw-qld",
-    "aemo-nsw-vlc",
+    "aemo-nsw-vic",
 ]
 
 
@@ -174,7 +174,7 @@ def create_model(config):
         x_dim = 6
         yc_dim = 4
         yt_dim = 4
-    elif config.dset == "aemo-nsw-vlc":
+    elif config.dset == "aemo-nsw-vic":
         x_dim = 6
         yc_dim = 4
         yt_dim = 4
@@ -702,7 +702,7 @@ def create_dset(config):
             time_col_name = "SETTLEMENTDATE"
             target_cols = ["TOTALDEMAND_NSW", "RRP_NSW", "TOTALDEMAND_QLD", "RRP_QLD"]
             NULL_VAL = 10**6
-        elif config.dset == "aemo-nsw-vlc":
+        elif config.dset == "aemo-nsw-vic":
             time_col_name = "SETTLEMENTDATE"
             target_cols = [
                 "TOTALDEMAND_NSW",
@@ -775,7 +775,7 @@ def create_dset(config):
             "aemo-tas",
             "aemo-vic",
             "aemo-nsw-qld",
-            "aemo-nsw-vlc",
+            "aemo-nsw-vic",
         ]:
             NULL_VAL = 10**6
 
