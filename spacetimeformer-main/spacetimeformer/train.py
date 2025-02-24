@@ -35,11 +35,13 @@ _DSETS = [
     "custom-asos-tx",
     "custom-asos-ny",
     "aemo-all",
-    "ameo-nsw",
+    "aemo-nsw",
     "aemo-qld",
     "aemo-sa",
     "aemo-tas",
     "aemo-vic",
+    "aemo-nsw-qld",
+    "aemo-nsw-vlc",
 ]
 
 
@@ -164,10 +166,18 @@ def create_model(config):
         x_dim = 6
         yc_dim = 10
         yt_dim = 10
-    elif config.dset in ["ameo-nsw", "aemo-qld", "aemo-sa", "aemo-tas", "aemo-vic"]:
+    elif config.dset in ["aemo-nsw", "aemo-qld", "aemo-sa", "aemo-tas", "aemo-vic"]:
         x_dim = 6
         yc_dim = 2
         yt_dim = 2
+    elif config.dset == "aemo-nsw-qld":
+        x_dim = 6
+        yc_dim = 4
+        yt_dim = 4
+    elif config.dset == "aemo-nsw-vlc":
+        x_dim = 6
+        yc_dim = 4
+        yt_dim = 4
     elif config.dset == "solar_energy":
         x_dim = 6
         yc_dim = 137
@@ -668,7 +678,7 @@ def create_dset(config):
                 "RRP_TAS",
             ]
             NULL_VAL = 10**6
-        elif config.dset == "ameo-nsw":
+        elif config.dset == "aemo-nsw":
             time_col_name = "SETTLEMENTDATE"
             target_cols = ["TOTALDEMAND_NSW", "RRP_NSW"]
             NULL_VAL = 10**6
@@ -687,6 +697,19 @@ def create_dset(config):
         elif config.dset == "aemo-vic":
             time_col_name = "SETTLEMENTDATE"
             target_cols = ["TOTALDEMAND_VIC", "RRP_VIC"]
+            NULL_VAL = 10**6
+        elif config.dset == "aemo-nsw-qld":
+            time_col_name = "SETTLEMENTDATE"
+            target_cols = ["TOTALDEMAND_NSW", "RRP_NSW", "TOTALDEMAND_QLD", "RRP_QLD"]
+            NULL_VAL = 10**6
+        elif config.dset == "aemo-nsw-vlc":
+            time_col_name = "SETTLEMENTDATE"
+            target_cols = [
+                "TOTALDEMAND_NSW",
+                "RRP_NSW",
+                "TOTALDEMAND_VIC",
+                "RRP_VIC",
+            ]
             NULL_VAL = 10**6
         elif config.dset == "solar_energy":
             if data_path == "auto":
@@ -746,11 +769,13 @@ def create_dset(config):
 
         if config.dset in [
             "aemo-all",
-            "ameo-nsw",
+            "aemo-nsw",
             "aemo-qld",
             "aemo-sa",
             "aemo-tas",
             "aemo-vic",
+            "aemo-nsw-qld",
+            "aemo-nsw-vlc",
         ]:
             NULL_VAL = 10**6
 
