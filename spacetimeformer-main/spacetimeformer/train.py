@@ -42,6 +42,8 @@ _DSETS = [
     "aemo-vic",
     "aemo-nsw-qld",
     "aemo-nsw-vic",
+    "aemo-nsw-qld-vic",
+    "aemo-nsw-qld-vic-tas",
 ]
 
 
@@ -178,6 +180,14 @@ def create_model(config):
         x_dim = 6
         yc_dim = 4
         yt_dim = 4
+    elif config.dset == "aemo-nsw-qld-vic":
+        x_dim = 6
+        yc_dim = 6
+        yt_dim = 6
+    elif config.dset == "aemo-nsw-qld-vic-tas":
+        x_dim = 6
+        yc_dim = 8
+        yt_dim = 8
     elif config.dset == "solar_energy":
         x_dim = 6
         yc_dim = 137
@@ -711,6 +721,30 @@ def create_dset(config):
                 "RRP_VIC",
             ]
             NULL_VAL = 10**6
+        elif config.dset == "aemo-nsw-qld-vic":
+            time_col_name = "SETTLEMENTDATE"
+            target_cols = [
+                "TOTALDEMAND_NSW",
+                "RRP_NSW",
+                "TOTALDEMAND_VIC",
+                "RRP_VIC",
+                "TOTALDEMAND_QLD",
+                "RRP_QLD",
+            ]
+            NULL_VAL = 10**6
+        elif config.dset == "aemo-nsw-qld-vic-tas":
+            time_col_name = "SETTLEMENTDATE"
+            target_cols = [
+                "TOTALDEMAND_NSW",
+                "RRP_NSW",
+                "TOTALDEMAND_VIC",
+                "RRP_VIC",
+                "TOTALDEMAND_QLD",
+                "RRP_QLD",
+                "TOTALDEMAND_TAS",
+                "RRP_TAS",
+            ]
+            NULL_VAL = 10**6
         elif config.dset == "solar_energy":
             if data_path == "auto":
                 data_path = "./data/solar_AL_converted.csv"
@@ -776,6 +810,8 @@ def create_dset(config):
             "aemo-vic",
             "aemo-nsw-qld",
             "aemo-nsw-vic",
+            "aemo-nsw-qld-vic",
+            "aemo-nsw-qld-vic-tas",
         ]:
             NULL_VAL = 10**6
 
