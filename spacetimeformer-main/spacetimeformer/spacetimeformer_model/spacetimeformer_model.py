@@ -221,7 +221,9 @@ class Spacetimeformer_Forecaster(stf.Forecaster):
 
         class_loss = F.cross_entropy(logits, labels)
 
-        if num_classes == 2:
+        if num_classes <= 1:
+            acc = 1.0
+        elif num_classes == 2:
             # For binary classification, use probability from the positive class.
             preds = torch.softmax(logits, dim=1)[:, 1]
             acc = torchmetrics.functional.accuracy(
