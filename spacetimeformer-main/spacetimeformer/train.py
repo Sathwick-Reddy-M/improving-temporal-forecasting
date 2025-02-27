@@ -34,17 +34,41 @@ _DSETS = [
     "traffic",
     "custom-asos-tx",
     "custom-asos-ny",
-    "aemo-all",
-    "aemo-nsw",
-    "aemo-qld",
-    "aemo-sa",
-    "aemo-tas",
-    "aemo-vic",
-    "aemo-nsw-qld",
-    "aemo-nsw-vic",
-    "aemo-nsw-qld-vic",
-    "aemo-nsw-qld-vic-tas",
 ]
+
+countries_map = {
+    'Austria': 'AT',
+    'Belgium': 'BE',
+    'Bulgaria': 'BG',
+    'Croatia': 'HR',
+    'Czechia': 'CZ',
+    'Denmark': 'DK',
+    'Estonia': 'EE',
+    'Finland': 'FI',
+    'France': 'FR',
+    'Germany': 'DE',
+    'Greece': 'GR',
+    'Hungary': 'HU',
+    'Ireland': 'IE',
+    'Italy': 'IT',
+    'Latvia': 'LV',
+    'Lithuania': 'LT',
+    'Luxembourg': 'LU',
+    'Montenegro': 'ME',
+    'Netherlands': 'NL',
+    'North Macedonia': 'MK',
+    'Norway': 'NO',
+    'Poland': 'PL',
+    'Portugal': 'PT',
+    'Romania': 'RO',
+    'Serbia': 'RS',
+    'Slovakia': 'SK',
+    'Slovenia': 'SI',
+    'Spain': 'ES',
+    'Sweden': 'SE',
+    'Switzerland': 'CH',
+    'United Kingdom': 'GB'
+}
 
 
 def create_parser():
@@ -55,7 +79,7 @@ def create_parser():
     assert (
         model in _MODELS
     ), f"Unrecognized model (`{model}`). Options include: {_MODELS}"
-    assert dset in _DSETS, f"Unrecognized dset (`{dset}`). Options include: {_DSETS}"
+    assert dset in _DSETS or dset.startswith('aemo') or dset.startswith('eu') or dset.startswith('nyiso'), f"Unrecognized dset (`{dset}`). Options include: {_DSETS}"
 
     parser = ArgumentParser()
     parser.add_argument("model")
@@ -164,30 +188,21 @@ def create_model(config):
         x_dim = 6
         yc_dim = 3
         yt_dim = 3
-    elif config.dset == "aemo-all":
+    elif config.dset.startswith("aemo"):
+        states = config.dset.split("-")[1:]
         x_dim = 6
-        yc_dim = 10
-        yt_dim = 10
-    elif config.dset in ["aemo-nsw", "aemo-qld", "aemo-sa", "aemo-tas", "aemo-vic"]:
+        yc_dim = len(states) * 2
+        yt_dim = len(states) * 2
+    elif config.dset.startswith("eu"):
+        countries = config.dset.split("-")[1:]
         x_dim = 6
-        yc_dim = 2
-        yt_dim = 2
-    elif config.dset == "aemo-nsw-qld":
+        yc_dim = len(countries)
+        yt_dim = len(countries)
+    elif config.dset.startswith("nyiso"):
+        regions = config.dset.split("-")[1:]
         x_dim = 6
-        yc_dim = 4
-        yt_dim = 4
-    elif config.dset == "aemo-nsw-vic":
-        x_dim = 6
-        yc_dim = 4
-        yt_dim = 4
-    elif config.dset == "aemo-nsw-qld-vic":
-        x_dim = 6
-        yc_dim = 6
-        yt_dim = 6
-    elif config.dset == "aemo-nsw-qld-vic-tas":
-        x_dim = 6
-        yc_dim = 8
-        yt_dim = 8
+        yc_dim = len(regions)
+        yt_dim = len(regions)
     elif config.dset == "solar_energy":
         x_dim = 6
         yc_dim = 137
@@ -673,77 +688,21 @@ def create_dset(config):
             target_cols = ["ABI", "ACT", "AMA"]
         elif config.dset == "custom-asos-ny":
             target_cols = ["ALB", "JFK", "LGA"]
-        elif config.dset == "aemo-all":
+        elif config.dset.startswith("aemo"):
             time_col_name = "SETTLEMENTDATE"
-            target_cols = [
-                "TOTALDEMAND_NSW",
-                "RRP_NSW",
-                "TOTALDEMAND_VIC",
-                "RRP_VIC",
-                "TOTALDEMAND_QLD",
-                "RRP_QLD",
-                "TOTALDEMAND_SA",
-                "RRP_SA",
-                "TOTALDEMAND_TAS",
-                "RRP_TAS",
+            states = config.dset.split("-")[1:]
+            target_cols = [f"TOTALDEMAND_{state}" for state in states] + [
+                f"RRP_{state}" for state in states
             ]
             NULL_VAL = 10**6
-        elif config.dset == "aemo-nsw":
-            time_col_name = "SETTLEMENTDATE"
-            target_cols = ["TOTALDEMAND_NSW", "RRP_NSW"]
+        elif config.dset.startswith("eu"):
+            time_col_name = "Datetime (UTC)"
+            countries = config.dset.split("-")[1:]
+            target_cols = [countries_map[country] for country in countries]
             NULL_VAL = 10**6
-        elif config.dset == "aemo-qld":
-            time_col_name = "SETTLEMENTDATE"
-            target_cols = ["TOTALDEMAND_QLD", "RRP_QLD"]
-            NULL_VAL = 10**6
-        elif config.dset == "aemo-sa":
-            time_col_name = "SETTLEMENTDATE"
-            target_cols = ["TOTALDEMAND_SA", "RRP_SA"]
-            NULL_VAL = 10**6
-        elif config.dset == "aemo-tas":
-            time_col_name = "SETTLEMENTDATE"
-            target_cols = ["TOTALDEMAND_TAS", "RRP_TAS"]
-            NULL_VAL = 10**6
-        elif config.dset == "aemo-vic":
-            time_col_name = "SETTLEMENTDATE"
-            target_cols = ["TOTALDEMAND_VIC", "RRP_VIC"]
-            NULL_VAL = 10**6
-        elif config.dset == "aemo-nsw-qld":
-            time_col_name = "SETTLEMENTDATE"
-            target_cols = ["TOTALDEMAND_NSW", "RRP_NSW", "TOTALDEMAND_QLD", "RRP_QLD"]
-            NULL_VAL = 10**6
-        elif config.dset == "aemo-nsw-vic":
-            time_col_name = "SETTLEMENTDATE"
-            target_cols = [
-                "TOTALDEMAND_NSW",
-                "RRP_NSW",
-                "TOTALDEMAND_VIC",
-                "RRP_VIC",
-            ]
-            NULL_VAL = 10**6
-        elif config.dset == "aemo-nsw-qld-vic":
-            time_col_name = "SETTLEMENTDATE"
-            target_cols = [
-                "TOTALDEMAND_NSW",
-                "RRP_NSW",
-                "TOTALDEMAND_VIC",
-                "RRP_VIC",
-                "TOTALDEMAND_QLD",
-                "RRP_QLD",
-            ]
-            NULL_VAL = 10**6
-        elif config.dset == "aemo-nsw-qld-vic-tas":
-            time_col_name = "SETTLEMENTDATE"
-            target_cols = [
-                "TOTALDEMAND_NSW",
-                "RRP_NSW",
-                "TOTALDEMAND_VIC",
-                "RRP_VIC",
-                "TOTALDEMAND_QLD",
-                "RRP_QLD",
-                "TOTALDEMAND_TAS",
-                "RRP_TAS",
-            ]
+        elif config.dset.startswith("nyiso"):
+            time_col_name = "Time Stamp"
+            target_cols = config.dset.split("-")[1:]
             NULL_VAL = 10**6
         elif config.dset == "solar_energy":
             if data_path == "auto":
@@ -801,18 +760,7 @@ def create_dset(config):
         SCALER = dset.apply_scaling
         NULL_VAL = None
 
-        if config.dset in [
-            "aemo-all",
-            "aemo-nsw",
-            "aemo-qld",
-            "aemo-sa",
-            "aemo-tas",
-            "aemo-vic",
-            "aemo-nsw-qld",
-            "aemo-nsw-vic",
-            "aemo-nsw-qld-vic",
-            "aemo-nsw-qld-vic-tas",
-        ]:
+        if config.dset.startswith("aemo") or config.dset.startswith("eu") or config.dset.startswith("nyiso"):
             NULL_VAL = 10**6
 
     return (
