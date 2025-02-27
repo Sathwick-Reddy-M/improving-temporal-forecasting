@@ -698,7 +698,7 @@ def create_dset(config):
         elif config.dset.startswith("eu"):
             time_col_name = "Datetime (UTC)"
             countries = config.dset.split("-")[1:]
-            target_cols = [countries_map[country] for country in countries]
+            target_cols = countries
             NULL_VAL = 10**6
         elif config.dset.startswith("nyiso"):
             time_col_name = "Time Stamp"
