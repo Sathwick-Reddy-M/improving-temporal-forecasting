@@ -942,7 +942,11 @@ def main(args):
 
     if not args.test_only:
         # Train
-        trainer.fit(forecaster, datamodule=data_module)
+        if args.ckpt_path and os.path.exists(args.ckpt_path):
+            print(f"Resuming training from checkpoint: {args.ckpt_path}")
+            trainer.fit(forecaster, datamodule=data_module, ckpt_path=args.ckpt_path)
+        else:
+            trainer.fit(forecaster, datamodule=data_module)
 
     if args.test_only:
         # Test
