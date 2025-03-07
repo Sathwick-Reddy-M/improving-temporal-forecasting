@@ -2,20 +2,25 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Python Debugger: Train spacetimeformer ETTM1",
+            "name": "Python Debugger: Train spacetimeformer aemo-SA Metrics Test",
             "type": "debugpy",
             "request": "launch",
             "program": "S:\\spatiotemporal-analysis\\spacetimeformer-main\\spacetimeformer\\train.py",
             "args": [
                 "spacetimeformer",
-                "asos",
-                "--context_points", "288",
-                "--target_points", "96",
-                "--run_name", "spacetimeformer_ettm1_regression",
+                "aemo-SA",
+                "--epochs", "100",
+                "--context_points", "360",
+                "--target_points", "48",
+                "--run_name", "spacetimeformer_aemo_sa_metrics_test",
+                "--use_revin",
+                "--use_seasonal_decomp",
+                "--l2_coeff", "0.0001",
                 "--batch_size", "32",
-                "--warmup_steps", "1000",
-                "--d_model", "200",
-                "--d_ff", "700",
+                "--base_lr", "0.0001",
+                "--learning_rate", "0.0001",
+                "--d_model", "100",
+                "--d_ff", "400",
                 "--enc_layers", "1",
                 "--dec_layers", "1",
                 "--dropout_emb", ".1",
@@ -24,9 +29,10 @@
                 "--d_v", "30",
                 "--n_heads", "10",
                 "--patience", "10",
-                "--decay_factor", ".8",
-                "--linear_window", "288",
-                "--data_path", "S:\\spatiotemporal-analysis\\spacetimeformer-main\\spacetimeformer\\data\\temperature-v1_modified.csv"
+                "--data_path", "C:\\Users\\vm-user\\Downloads\\All Datasets\\All Datasets\\aemo\\SA.csv",
+                "--test_only",
+                "--metrics_per_channel",
+                "--ckpt_path", "C:\\Users\\vm-user\\Downloads\\checkpoints\\data\\STF_LOG_DIR\\aemo_SA_d2cd14ce\\aemo_SAepoch=09.ckpt"
             ],
             "console": "integratedTerminal"
         }

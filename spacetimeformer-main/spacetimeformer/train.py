@@ -79,7 +79,7 @@ def create_parser():
     assert (
         model in _MODELS
     ), f"Unrecognized model (`{model}`). Options include: {_MODELS}"
-    assert dset in _DSETS or dset.startswith('aemo') or dset.startswith('eu') or dset.startswith('nyiso'), f"Unrecognized dset (`{dset}`). Options include: {_DSETS}"
+    assert dset in _DSETS or dset.startswith('aemo') or dset.startswith('eu') or dset.startswith('nyiso') or dset.startswith("test-aemo"), f"Unrecognized dset (`{dset}`). Options include: {_DSETS}"
 
     parser = ArgumentParser()
     parser.add_argument("model")
@@ -151,6 +151,7 @@ def create_parser():
         help="Path to the checkpoint to use for testing",
     )
     parser.add_argument("--test_only", action="store_true")
+    parser.add_argument("--metrics_per_channel", action="store_true")
     parser.add_argument(
         "--trials", type=int, default=1, help="How many consecutive trials to run"
     )
@@ -193,6 +194,11 @@ def create_model(config):
         x_dim = 6
         yc_dim = len(states) * 2
         yt_dim = len(states) * 2
+    elif config.dset.startswith("test-aemo"):
+        states = config.dset.split("-")[1:]
+        x_dim = 6
+        yc_dim = len(states) * 2
+        yt_dim = 1
     elif config.dset.startswith("eu"):
         countries = config.dset.split("-")[1:]
         x_dim = 6
@@ -407,6 +413,7 @@ def create_model(config):
             recon_mask_drop_seq=config.recon_mask_drop_seq,
             recon_mask_drop_standard=config.recon_mask_drop_standard,
             recon_mask_drop_full=config.recon_mask_drop_full,
+            metrics_per_channel=config.metrics_per_channel,
         )
     elif config.model == "linear":
         forecaster = stf.linear_model.Linear_Forecaster(

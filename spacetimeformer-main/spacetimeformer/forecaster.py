@@ -25,6 +25,7 @@ class Forecaster(pl.LightningModule, ABC):
         use_revin: bool = False,
         use_seasonal_decomp: bool = False,
         verbose: int = True,
+        metrics_per_channel: bool = False
     ):
         super().__init__()
 
@@ -42,6 +43,7 @@ class Forecaster(pl.LightningModule, ABC):
         self.time_masked_idx = None
         self.null_value = None
         self.loss = loss
+        self.test_step_outputs = []
 
         if linear_window:
             self.linear_model = stf.linear_model.LinearModel(
@@ -234,6 +236,38 @@ class Forecaster(pl.LightningModule, ABC):
             "norm_mse": stf.eval_stats.mse(true, pred) / adj,
         }
         return stats
+    
+    def _compute_stats_per_channel(self, pred: torch.Tensor, true: torch.Tensor, mask: torch.Tensor):
+        pred = pred * mask
+        true = torch.nan_to_num(true) * mask
+
+        # Calculate per-channel adjustment
+        adj = mask.mean(dim=(0, 1)).cpu().numpy() + 1e-5
+
+        scaled_pred = self._inv_scaler(pred)
+        scaled_true = self._inv_scaler(true)
+
+        # Get numpy arrays
+        pred_np = pred.detach().cpu().numpy()
+        true_np = true.detach().cpu().numpy()
+
+        # Build a flat dictionary with keys like "channel_0_mape", "channel_0_mae", etc.
+        flat_channel_stats = {}
+        num_channels = pred_np.shape[-1]
+        for ch in range(num_channels):
+            cur_scaled_pred = scaled_pred[..., ch]
+            cur_scaled_true = scaled_true[..., ch]
+            stats_ch = {
+                "mape": stf.eval_stats.mape(cur_scaled_true, cur_scaled_pred) / adj[ch],
+                "mae": stf.eval_stats.mae(cur_scaled_true, cur_scaled_pred) / adj[ch],
+                "mse": stf.eval_stats.mse(cur_scaled_true, cur_scaled_pred) / adj[ch],
+                "smape": stf.eval_stats.smape(cur_scaled_true, cur_scaled_pred) / adj[ch],
+                "norm_mae": stf.eval_stats.mae(true_np[..., ch], pred_np[..., ch]) / adj[ch],
+                "norm_mse": stf.eval_stats.mse(true_np[..., ch], pred_np[..., ch]) / adj[ch],
+            }
+            for metric, value in stats_ch.items():
+                flat_channel_stats[f"channel_{ch}_{metric}"] = value
+        return flat_channel_stats
 
     def step(self, batch: Tuple[torch.Tensor], train: bool = False):
         kwargs = (
@@ -247,8 +281,12 @@ class Forecaster(pl.LightningModule, ABC):
             forward_kwargs=kwargs,
         )
         *_, y_t = batch
-        stats = self._compute_stats(output, y_t, mask)
-        stats["loss"] = loss
+        if self.metrics_per_channel:
+            stats = self._compute_stats_per_channel(output, y_t, mask)
+        else:
+            stats = self._compute_stats(output, y_t, mask)
+        
+        stats["loss"] = loss            
         return stats
 
     def training_step(self, batch, batch_idx):
@@ -264,7 +302,11 @@ class Forecaster(pl.LightningModule, ABC):
 
     def test_step(self, batch, batch_idx):
         stats = self.step(batch, train=False)
-        self._log_stats("test", stats)
+        if not self.metrics_per_channel:
+            self._log_stats("test", stats)
+        else:
+            self.test_step_outputs.append(stats)
+            self._log_stats("test", stats)
         return stats
 
     def _log_stats(self, section, outs):
@@ -273,6 +315,22 @@ class Forecaster(pl.LightningModule, ABC):
             if isinstance(stat, np.ndarray) or isinstance(stat, torch.Tensor):
                 stat = stat.mean()
             self.log(f"{section}/{key}", stat, sync_dist=True)
+
+    def _log_stats_per_channel(self, section, outs):
+        for channel in outs.keys():
+            if not isinstance(outs[channel], dict):
+                continue
+            
+            for key in outs[channel].keys():
+                stat = outs[channel][key]
+                if isinstance(stat, np.ndarray) or isinstance(stat, torch.Tensor):
+                    stat = stat.mean()
+                self.log(f"{section}/{channel}_{key}", stat, sync_dist=True)
+
+        loss = outs["loss"]
+        if isinstance(loss, np.ndarray) or isinstance(loss, torch.Tensor):
+            loss = loss.mean()
+        self.log(f"{section}/loss", loss, sync_dist=True)
 
     def training_step_end(self, outs):
         self._log_stats("train", outs)
@@ -283,9 +341,51 @@ class Forecaster(pl.LightningModule, ABC):
         return outs
 
     def test_step_end(self, outs):
-        self._log_stats("test", outs)
-        return {"loss": outs["loss"].mean()}
+        if self.metrics_per_channel:
+            self._log_stats("test", outs)
+            return {"test/loss": outs["loss"].mean()}
+        else:
+            self._log_stats("test", outs)
+            return {"test/loss": outs["loss"].mean()}
+        
+    # def on_test_epoch_end(self):
+    #     """
+    #     This hook is called at the end of the test epoch.
+    #     We aggregate the outputs stored in self.test_step_outputs and log a final summary.
+    #     """
+    #     outputs = self.test_step_outputs  # collected during the test steps
+    #     if not outputs:
+    #         return
 
+    #     if self.metrics_per_channel:
+    #         # Gather all keys across flattened outputs.
+    #         all_keys = {}
+    #         for output in outputs:
+    #             for key, value in output.items():
+    #                 if key not in all_keys:
+    #                     all_keys[key] = [value]
+    #                 else:
+    #                     all_keys[key].append(value)
+    #         # Average the values for each key and log them.
+    #         for key, values in all_keys.items():
+    #             # Convert tensors (from cuda if applicable) to cpu and then to numpy.
+    #             numeric_values = [
+    #                 v.cpu().numpy() if isinstance(v, torch.Tensor) else v
+    #                 for v in values
+    #             ]
+    #             avg_value = np.mean(numeric_values)
+    #             self.log(f"test/{key}", avg_value, sync_dist=True)
+    #     else:
+    #         # Ensure each loss value is on CPU and then average.
+    #         numeric_losses = [
+    #             o["test/loss"].cpu().item() if isinstance(o["test/loss"], torch.Tensor) 
+    #             else o["test/loss"] for o in outputs
+    #         ]
+    #         avg_loss = np.mean(numeric_losses)
+    #         self.log("test/loss", avg_loss, sync_dist=True)
+    #     # Clear the stored outputs to free memory.
+    #     self.test_step_outputs.clear()
+    
     def predict_step(self, batch, batch_idx):
         return self(*batch, **self.eval_step_forward_kwargs)
 

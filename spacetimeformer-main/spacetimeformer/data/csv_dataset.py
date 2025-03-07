@@ -198,6 +198,8 @@ class CSVTimeSeries:
         # if the array dim is less than this length we start
         # slicing from the target cols
         dim = array.shape[-1]
+        if(isinstance(array, torch.Tensor)):
+            array = array.cpu().numpy()
         return (array * self._scaler.scale_[:dim]) + self._scaler.mean_[:dim]
 
     @property

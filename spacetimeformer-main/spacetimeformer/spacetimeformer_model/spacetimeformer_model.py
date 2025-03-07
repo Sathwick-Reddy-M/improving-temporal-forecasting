@@ -72,6 +72,7 @@ class Spacetimeformer_Forecaster(stf.Forecaster):
         recon_mask_drop_standard: float = 0.2,
         recon_mask_drop_full: float = 0.05,
         verbose=True,
+        metrics_per_channel=False,
     ):
         super().__init__(
             d_x=d_x,
@@ -83,6 +84,7 @@ class Spacetimeformer_Forecaster(stf.Forecaster):
             use_revin=use_revin,
             use_seasonal_decomp=use_seasonal_decomp,
             linear_shared_weights=linear_shared_weights,
+            metrics_per_channel=metrics_per_channel,
         )
         self.spacetimeformer = stf.spacetimeformer_model.nn.Spacetimeformer(
             d_yc=d_yc,
@@ -141,6 +143,7 @@ class Spacetimeformer_Forecaster(stf.Forecaster):
         self.embed_method = embed_method
         self.class_loss_imp = class_loss_imp
         self.recon_loss_imp = recon_loss_imp
+        self.metrics_per_channel = metrics_per_channel
         self.set_null_value(null_value)
         self.pad_value = pad_value
         self.save_hyperparameters()
@@ -194,7 +197,10 @@ class Spacetimeformer_Forecaster(stf.Forecaster):
         *_, y_t = batch
 
         # compute prediction accuracy stats for logging
-        stats = self._compute_stats(forecast_out, y_t, forecast_mask)
+        if self.metrics_per_channel:
+            stats = self._compute_stats_per_channel(forecast_out, y_t, forecast_mask)
+        else:
+            stats = self._compute_stats(forecast_out, y_t, forecast_mask)
 
         stats["forecast_loss"] = loss_dict["forecast_loss"]
         stats["class_loss"] = loss_dict["class_loss"]
