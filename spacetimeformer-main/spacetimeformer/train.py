@@ -79,7 +79,7 @@ def create_parser():
     assert (
         model in _MODELS
     ), f"Unrecognized model (`{model}`). Options include: {_MODELS}"
-    assert dset in _DSETS or dset.startswith('aemo') or dset.startswith('eu') or dset.startswith('nyiso') or dset.startswith("test-aemo"), f"Unrecognized dset (`{dset}`). Options include: {_DSETS}"
+    assert dset in _DSETS or dset.startswith('aemo') or dset.startswith('aemo-dynamic') or dset.startswith('nyiso-dynamic') or dset.startswith('eu') or dset.startswith('nyiso') or dset.startswith("test-aemo"), f"Unrecognized dset (`{dset}`). Options include: {_DSETS}"
 
     parser = ArgumentParser()
     parser.add_argument("model")
@@ -152,6 +152,10 @@ def create_parser():
     )
     parser.add_argument("--test_only", action="store_true")
     parser.add_argument("--metrics_per_channel", action="store_true")
+    parser.add_argument("--aemo_states", type=str, required=False)
+    parser.add_argument("--nyiso_regions", type=str, required=False)
+    parser.add_argument("--ignore_cols", type=str, required=False)
+    parser.add_argument("--target_cols", type=str, required=False)
     parser.add_argument(
         "--trials", type=int, default=1, help="How many consecutive trials to run"
     )
@@ -189,6 +193,16 @@ def create_model(config):
         x_dim = 6
         yc_dim = 3
         yt_dim = 3
+    elif config.dset == "aemo-dynamic":
+        states = config.aemo_states.split("-")
+        x_dim = 6
+        yc_dim = len(states)
+        yt_dim = len(config.target_cols.split("-"))
+    elif config.dset == "nyiso-dynamic":
+        regions = config.nyiso_regions.split("-")
+        x_dim = 6
+        yc_dim = len(regions)
+        yt_dim = len(config.target_cols.split("-"))
     elif config.dset.startswith("aemo"):
         states = config.dset.split("-")[1:]
         x_dim = 6
@@ -462,6 +476,8 @@ def create_dset(config):
     PLOT_VAR_NAMES = None
     PAD_VAL = None
 
+    ignore_cols = "all"
+
     if config.dset == "metr-la" or config.dset == "pems-bay":
         if config.dset == "pems-bay":
             assert (
@@ -695,6 +711,16 @@ def create_dset(config):
             target_cols = ["ABI", "ACT", "AMA"]
         elif config.dset == "custom-asos-ny":
             target_cols = ["ALB", "JFK", "LGA"]
+        elif config.dset == "aemo-dynamic":
+            time_col_name = "SETTLEMENTDATE"
+            target_cols = config.target_cols.split("-")
+            ignore_cols = config.ignore_cols.split("-")
+            NULL_VAL = 10**6
+        elif config.dset == "nyiso-dynamic":
+            time_col_name = "Time Stamp"
+            target_cols = config.target_cols.split("-")
+            ignore_cols = config.ignore_cols.split("-")
+            NULL_VAL = 10**6
         elif config.dset.startswith("aemo"):
             time_col_name = "SETTLEMENTDATE"
             states = config.dset.split("-")[1:]
@@ -745,7 +771,7 @@ def create_dset(config):
         dset = stf.data.CSVTimeSeries(
             data_path=data_path,
             target_cols=target_cols,
-            ignore_cols="all",
+            ignore_cols=ignore_cols,
             time_col_name=time_col_name,
             time_features=time_features,
             val_split=0.2,
