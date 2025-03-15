@@ -218,6 +218,8 @@ class Spacetimeformer_Forecaster(stf.Forecaster):
     def classification_loss(
         self, logits: torch.Tensor, labels: torch.Tensor
     ) -> Tuple[torch.Tensor]:
+        
+        return 0, 0
 
         labels = labels.view(-1).to(logits.device)
         d_y = labels.max() + 1
