@@ -79,7 +79,7 @@ def create_parser():
     assert (
         model in _MODELS
     ), f"Unrecognized model (`{model}`). Options include: {_MODELS}"
-    assert dset in _DSETS or dset.startswith('aemo') or dset.startswith('aemo-dynamic') or dset.startswith('nyiso-dynamic') or dset.startswith('eu') or dset.startswith('nyiso') or dset.startswith("test-aemo"), f"Unrecognized dset (`{dset}`). Options include: {_DSETS}"
+    assert dset in _DSETS or dset.startswith('aemo') or dset.startswith('aemo-dynamic') or dset.startswith('nyiso-dynamic') or dset.startswith("ia-asos-dynamic") or dset.startswith('eu') or dset.startswith('nyiso') or dset.startswith("test-aemo"), f"Unrecognized dset (`{dset}`). Options include: {_DSETS}"
 
     parser = ArgumentParser()
     parser.add_argument("model")
@@ -156,6 +156,7 @@ def create_parser():
     parser.add_argument("--nyiso_regions", type=str, required=False)
     parser.add_argument("--ignore_cols", type=str, required=False)
     parser.add_argument("--target_cols", type=str, required=False)
+    parser.add_argument("--use_cols", type=str, required=False)
     parser.add_argument(
         "--trials", type=int, default=1, help="How many consecutive trials to run"
     )
@@ -193,6 +194,10 @@ def create_model(config):
         x_dim = 6
         yc_dim = 3
         yt_dim = 3
+    elif config.dset == "ia-asos-dynamic":
+        x_dim = 6
+        yc_dim = len(config.use_cols.split("-"))
+        yt_dim = len(config.target_cols.split("-"))
     elif config.dset == "aemo-dynamic":
         states = config.aemo_states.split("-")
         x_dim = 6
@@ -716,6 +721,11 @@ def create_dset(config):
             target_cols = config.target_cols.split("-")
             ignore_cols = config.ignore_cols.split("-")
             NULL_VAL = 10**6
+        elif config.dset == "ia-asos-dynamic":
+            time_col_name = "Time"
+            target_cols = config.target_cols.split("-")
+            ignore_cols = config.ignore_cols.split("-")
+            NULL_VAL = 10**6
         elif config.dset == "nyiso-dynamic":
             time_col_name = "Time Stamp"
             target_cols = config.target_cols.split("-")
@@ -793,7 +803,7 @@ def create_dset(config):
         SCALER = dset.apply_scaling
         NULL_VAL = None
 
-        if config.dset.startswith("aemo") or config.dset.startswith("eu") or config.dset.startswith("nyiso"):
+        if config.dset.startswith("aemo") or config.dset.startswith("eu") or config.dset.startswith("nyiso") or config.dset.startswith("ia-asos"):
             NULL_VAL = 10**6
 
     return (
